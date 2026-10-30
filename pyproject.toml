@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rated-rip"
+version = "0.4.0"
+description = "Live audio-reactive RGB DMX lighting for Raspberry Pi"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.24,<3"]
+
+[project.optional-dependencies]
+dmx = ["pyserial>=3.5,<4"]
+research = ["scikit-learn>=1.4,<2", "matplotlib>=3.7,<4"]
+
+[project.scripts]
+rated-rip = "rated_rip.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["rated_rip*"]
+
+[tool.setuptools.package-data]
+rated_rip = ["vocal_model.json"]

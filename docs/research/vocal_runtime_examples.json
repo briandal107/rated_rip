@@ -1,0 +1,44 @@
+[
+  {
+    "track": "AM Contra - Heart Peripheral",
+    "variant": "With vocal stem",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.5338537569996333,
+    "active_fraction_after_warmup": 0.86
+  },
+  {
+    "track": "AM Contra - Heart Peripheral",
+    "variant": "Accompaniment only",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.4510097299998961,
+    "active_fraction_after_warmup": 0.0
+  },
+  {
+    "track": "M.E.R.C. Music - Knockout",
+    "variant": "With vocal stem",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.4696168400005263,
+    "active_fraction_after_warmup": 0.772
+  },
+  {
+    "track": "M.E.R.C. Music - Knockout",
+    "variant": "Accompaniment only",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.3919508980006867,
+    "active_fraction_after_warmup": 0.0
+  },
+  {
+    "track": "Detsky Sad - Walkie Talkie",
+    "variant": "With vocal stem",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.5324491740002486,
+    "active_fraction_after_warmup": 1.0
+  },
+  {
+    "track": "Detsky Sad - Walkie Talkie",
+    "variant": "Accompaniment only",
+    "audio_seconds": 6.8034467120181406,
+    "processing_seconds": 0.47624253399953886,
+    "active_fraction_after_warmup": 1.0
+  }
+]

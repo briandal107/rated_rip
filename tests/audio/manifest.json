@@ -1,0 +1,82 @@
+[
+  {
+    "id": "lv-sandals",
+    "title": "EsDeeKid, fakemink - LV Sandals",
+    "file": "tests/audio/01-lv-sandals.mp3",
+    "sha256": "8afffe85db44813f6af57812a65d28c95b79c1eaf1b921aecd3643605fd04dc1",
+    "bytes": 4797696,
+    "duration": 111.203265,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "innuendo",
+    "title": "underscores - Innuendo (I Get U)",
+    "file": "tests/audio/02-innuendo.mp3",
+    "sha256": "54f2512a52b4a7813a8f9f22fbb4af9405050ace8cd16d7a4ea6058afdbf87b0",
+    "bytes": 9001290,
+    "duration": 208.416,
+    "source_rate": 48000,
+    "channels": 2
+  },
+  {
+    "id": "unconditional",
+    "title": "NOTION - UNCONDITIONAL ft Nate Sib",
+    "file": "tests/audio/03-unconditional.mp3",
+    "sha256": "8a114a4486f02f3b05784b50e681360271d64c0be3fe976fb60ebdbc43a1bbfe",
+    "bytes": 7443694,
+    "duration": 181.342041,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "comes-and-goes",
+    "title": "Kettama - Comes and Goes",
+    "file": "tests/audio/04-comes-and-goes.mp3",
+    "sha256": "f40cade2fe7bd5011fbc20e46cc62ca4e81227d8ce688ffa29bcdf8acb173cc1",
+    "bytes": 10777442,
+    "duration": 262.217143,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "i-think-im-in-love",
+    "title": "Aaron Hibell - i think i'm in love",
+    "file": "tests/audio/05-i-think-im-in-love.mp3",
+    "sha256": "f3a7f7af552d4e5d99e941fa70df37a82bd1c248a5967efb2d82b2a2f3ba0fea",
+    "bytes": 2977801,
+    "duration": 185.443265,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "fuji-opener",
+    "title": "Skrillex - Fuji Opener",
+    "file": "tests/audio/06-fuji-opener.mp3",
+    "sha256": "12e52663940993434200e529efbc730d1b7a5a6e264b93aa4c38e89c09da9b76",
+    "bytes": 6769908,
+    "duration": 167.235918,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "stupid-song",
+    "title": "Olivia Rodrigo - stupid song",
+    "file": "tests/audio/07-stupid-song.mp3",
+    "sha256": "5397663ce8ca4d6d591137872f4013d907e103062271936a4a1e27970954925c",
+    "bytes": 14777179,
+    "duration": 209.737156,
+    "source_rate": 44100,
+    "channels": 2
+  },
+  {
+    "id": "hide-and-seek",
+    "title": "Imogen Heap - Hide and Seek",
+    "file": "tests/audio/08-hide-and-seek.mp3",
+    "sha256": "145232ffb154809ec3d5450e754775aa781509bce86ab607e8bc80b00587f774",
+    "bytes": 10747059,
+    "duration": 268.538776,
+    "source_rate": 44100,
+    "channels": 2
+  }
+]
