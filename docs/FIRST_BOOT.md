@@ -1,8 +1,8 @@
 # First Raspberry Pi setup
 
 This guide is for a Raspberry Pi 3 B+, an SSL USB audio interface, and three
-ADJ Mega TriPars at d.001, d.005, and d.009. The code is Python source: there is
-no special firmware to compile or custom SD-card image to build.
+ADJ Mega TRIPAR Profile Plus fixtures at d.001, d.005, and d.009. The code is Python
+source: there is no special firmware to compile or custom SD-card image to build.
 
 ## What goes on the microSD?
 
@@ -87,7 +87,7 @@ If you saved the ZIP somewhere else, change to that folder first. `scp` copies
 the archive onto the Pi's microSD over the network; it may ask for your Pi
 password. The final `ssh` opens a new terminal session on the Pi.
 
-This archive contains the same version 0.4 application as the GitHub repository.
+This archive contains the same version 0.5 application as the GitHub repository.
 The small archive avoids downloading the full-song MP3 fixtures onto the Pi.
 
 ## 4. Install and check the program on the Pi
@@ -116,7 +116,8 @@ lighting. The bundled model adds no separate installation step.
 
 ## 5. Identify the connected hardware
 
-Connect the SSL and ENTTEC to the Pi, and run:
+Connect the SSL and ENTTEC through the powered USB hub, with the Pi on its own
+power supply, and run:
 
 ```sh
 arecord -l
@@ -157,10 +158,14 @@ Play music. RMS and RGB values should respond; attack count should advance. Sile
 should fade the RGB values to zero. If capture rejects 44.1 kHz, try adding
 `--rate 48000`. ALSA `plughw` handles audio-format conversion.
 
-Set all three fixtures to **3-channel RGB DMX mode**, keeping addresses
-**d.001, d.005, d.009**. The address display alone does not confirm channel mode.
-The program defaults to these addresses; gaps between the three-channel ranges
-are intentional. After confirming the fixture mode and adapter compatibility:
+Set all three **Mega TRIPAR Profile Plus** fixtures to **Ch04 (four-channel
+RGB+UV DMX mode)**, keeping addresses **d.001, d.005, d.009**. At the address
+display, SETUP accesses the `ChXX` setting; use UP/DOWN to select `Ch04`.
+The address display alone does not confirm channel mode. The program sends RGB
+on channels 1–3, 5–7 and 9–11 and leaves UV channels 4, 8 and 12 off. Do not use
+Ch06: its shutter/dimmer channels and six-channel footprint conflict with this
+configuration. For a different fixture model, verify its channel map first.
+After confirming the fixture mode and adapter compatibility:
 
 ```sh
 .venv/bin/rated-rip --device plughw:CARD=SSL_CARD_ID,DEV=0 \
@@ -168,6 +173,10 @@ are intentional. After confirming the fixture mode and adapter compatibility:
 ```
 
 This runs until you press **Ctrl-C**, which attempts to black out the lights.
+Version 0.5 rotates through Pulse, Chase, Split and Bloom about every 150 audible
+seconds. The console reports the current `scheme`. Add `--scheme-seconds 20` for
+a quick rehearsal, or `--scheme split` to hold one scheme. See
+[scheme behavior and upgrading an existing installation](SCHEMES.md).
 Start with this manual workflow; automatic startup on boot is not configured.
 Keep the SSH session open while running it. Subsequent runs only need the last
 command from `~/rated_rip`; you do not reinstall everything each time.

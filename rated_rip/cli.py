@@ -9,6 +9,7 @@ from dataclasses import asdict
 
 import numpy as np
 
+from . import __version__
 from .dmx import EnttecPro, universe
 from .engine import Analyzer, Lighting
 
@@ -25,6 +26,7 @@ def read_exact(stream, size):
 
 def main():
     parser = argparse.ArgumentParser(description="Live audio-reactive three-fixture RGB lighting")
+    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument('--simulate', action='store_true', help='Synthetic audio; no ALSA hardware needed')
     parser.add_argument('--device', default='default', help='ALSA capture device, e.g. plughw:CARD=USB,DEV=0')
     parser.add_argument('--rate', type=int, default=44100)
@@ -34,6 +36,10 @@ def main():
     parser.add_argument('--addresses', type=int, nargs=3, default=[1, 5, 9],
                         help='DMX start addresses (default: 1 5 9)')
     parser.add_argument('--brightness', type=float, default=0.65)
+    parser.add_argument('--scheme', choices=('auto',) + Lighting.SCHEMES, default='auto',
+                        help='Lighting scheme; auto rotates through all four (default)')
+    parser.add_argument('--scheme-seconds', type=float, default=150,
+                        help='Audible seconds before requesting the next scheme (default: 150, minimum: 5)')
     parser.add_argument('--seed', type=int)
     parser.add_argument('--attack-log', help='Write attack descriptors to a new JSONL file (no audio)')
     parser.add_argument('--vocal-log', help='Write experimental vocal/phrase cues to a new JSONL file')
@@ -43,6 +49,8 @@ def main():
         parser.error('--vocal-log requires vocal analysis; omit --no-vocals')
     if args.rate not in (44100, 48000) or args.duration < 0 or not 0 <= args.brightness <= 1:
         parser.error('Use rate 44100 or 48000, duration >= 0, and brightness 0..1')
+    if not math.isfinite(args.scheme_seconds) or args.scheme_seconds < 5:
+        parser.error('--scheme-seconds must be finite and at least 5')
     try:
         universe([(0, 0, 0)] * 3, args.addresses)
     except ValueError as exc:
@@ -50,7 +58,7 @@ def main():
     if not args.simulate and not shutil.which('arecord'):
         parser.error('Live capture requires ALSA arecord: install alsa-utils')
     analyzer = Analyzer(args.rate, vocals=not args.no_vocals)
-    lighting = Lighting(args.seed, args.brightness)
+    lighting = Lighting(args.seed, args.brightness, args.scheme, args.scheme_seconds)
     capture = output = attack_log = vocal_log = None
     stopped = False
 
@@ -108,7 +116,8 @@ def main():
                 print(json.dumps({'rms': round(features.rms, 4), 'loudness': round(features.loudness, 3),
                                   'density': round(features.density, 3), 'attacks': lighting.beats,
                                   'vocal_score': round(features.vocal.score, 3),
-                                  'vocal_active': features.vocal.active, 'rgb': rgb}), flush=True)
+                                  'vocal_active': features.vocal.active, 'scheme': lighting.scheme,
+                                  'scheme_changes': lighting.scheme_changes, 'rgb': rgb}), flush=True)
                 last_report = elapsed
             tick += 1
             if args.simulate:

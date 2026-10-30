@@ -8,11 +8,17 @@ No playlists, YAML, pre-recorded tracks, cloud services, or song metadata.
 **New to Raspberry Pi?** Follow [the first-boot guide](docs/FIRST_BOOT.md) to
 flash the microSD, copy this program to the Pi, and run the first checks.
 [Download the small Pi installation ZIP](https://github.com/briandal107/rated_rip/raw/refs/heads/main/downloads/rated-rip-pi.zip)
-directly from GitHub. It includes version 0.4, the bundled model, documentation
+directly from GitHub. It includes version 0.5, the bundled model, documentation
 and fast tests; the large MP3 fixtures stay in the repository.
 OLA is not required: this version uses the ENTTEC USB Pro serial protocol directly.
 
-Version 0.4 includes an **experimental vocal-activity layer**, evaluated on
+Version 0.5 adds **four distinct lighting schemes** with stronger attack contrast
+and automatic rotation about every 2½ minutes. Start with the same brightness
+ceiling you used before; the darker backgrounds and stronger accents make the
+response more pronounced without raising that ceiling. See [schemes and upgrading
+an existing Pi](docs/SCHEMES.md).
+
+The **experimental vocal-activity layer** was evaluated on
 real MUSDB excerpts with separate vocal stems. It is enabled by default and can
 be disabled with `--no-vocals`. The held-out results are mixed: 68% recall of
 vocal-positive windows and 19% false positives on vocal-negative windows. It
@@ -25,30 +31,44 @@ gentler accents for weak percussion evidence; see the
 [before/after evaluation](docs/SONG_TESTS_V04.md). The owner-provided MP3s are under
 `tests/audio/`. They are not vocal/drum detection ground truth.
 
-## Attack-aware lighting
+## Lighting schemes and audio response
+
+| Scheme | Behavior |
+| --- | --- |
+| `pulse` | Shared low-frequency punches, a stronger center, and contrasting side accents over a dim background. |
+| `chase` | Low/mid attacks step left → center → right → center, with short colored trails. High-only attacks decorate the pattern. |
+| `split` | Low attacks drive the center; mids/highs answer on the outside in complementary colors. |
+| `bloom` | Longer, broader swells with a wider palette and more sustained vocal glow. |
+
+`--scheme auto` is the default. It starts with Pulse, then visits the other three
+in shuffled order before beginning another cycle, without adjacent repeats.
+`--scheme-seconds 150` sets the interval in audible seconds. A change waits up to
+three further audible seconds for an attack, then proceeds even without one;
+the two live schemes crossfade over 1.2 seconds. Silence pauses the rotation.
+Use `--scheme pulse`, `chase`, `split` or `bloom` to hold one scheme indefinitely.
 
 - RMS loudness with adaptive gain and attack/release smoothing drives brightness.
 - Separate low-, mid-, and high-frequency onset detectors produce immediate
   accents, then refine each event with 30 ms and 90 ms descriptions.
-- Low attacks emphasize the center fixture, mid attacks alternate between the
-  outer fixtures, and high attacks add a smaller, shorter accent. The first and
-  third DMX addresses are assumed to be the outer fixtures.
-- Spectral balance, noisiness, crest factor, and decay shape influence the accent
+- The schemes route these attacks differently across the fixtures. The first and
+  third DMX addresses are the outside lights; d.005 belongs in the center.
+- Spectral bands, percussion evidence, noisiness, and decay shape influence the accent
   envelopes. Noisy/flat-topped attacks soften saturation slightly. These are
   descriptions of the captured mix, not reliable instrument or compressor labels.
 - Fast level rise, spectral concentration and observed decay provide a separate
-  percussion-evidence score. Weak evidence produces a gentler spatial accent and
-  a small shared bloom; strong evidence retains faster low/mid/high accents.
+  percussion-evidence score. Weak evidence retains a gentler start; strong attacks
+  produce larger accents. The strongest gesture wins at each fixture instead of
+  letting dense hits accumulate into a constant full-brightness wash.
 - Spectral entropy (frequency spread, a rough density proxy) slowly widens the palette
   and changes movement speed. This is not a musical complexity measurement.
-- Detected attacks occasionally trigger randomized, smoothly blended palette changes.
-  A 24-audible-second fallback also works without attacks. Three related colors
-  and gentle spatial movement keep the chain coordinated.
+- Detected attacks trigger palette changes, with a 24-audible-second fallback.
+  Palette transitions are faster than version 0.4. Chase and Split introduce
+  contrasting colors, while Bloom uses a wider, more sustained palette.
 - Silence fades to black; default maximum brightness is 65%. No strobe channels.
 - When vocal-like activity persists, a small additional layer steadies the
   palette and lets the outer fixtures breathe together. Palette changes become
-  smaller and slower, with an 8–16-second minimum opportunity and 2.5–6-second
-  transition time constant. Vocals never veto palette changes indefinitely.
+  smaller and slower, with a 6–10-second minimum opportunity and 0.45–1.1-second
+  transition time constant. Vocals never veto palette or scheme changes.
   The layer uses an observed envelope, not invented syllable timing.
 
 This is an onset detector, not a BPM tracker or Serato/Rekordbox-style offline beat
@@ -62,19 +82,24 @@ Hardware timing, input levels, and fixture behavior still need testing on the Pi
 1. Connect a spare **line-level** master/booth output from the DJ controller to
    the SSL's line inputs, using appropriate cables. Select line mode, turn phantom
    power off, and adjust gain to avoid clipping. Do not connect speaker-level output.
-2. Connect the SSL and ENTTEC to the Pi's USB ports. Use a reliable Pi supply;
-   a powered USB hub may be needed if bus power is unstable.
+2. Connect the SSL and ENTTEC to a powered USB hub, and its upstream cable to the
+   Pi. Power the hub with its wall adapter and the Pi with its own reliable supply.
 3. Connect ENTTEC DMX OUT → fixture 1 IN → fixture 2 IN → fixture 3 IN using DMX
    cable. Terminate the final fixture's DMX OUT with a 120-ohm DMX terminator.
 4. Keep the fixtures at **d.001, d.005, d.009** (start addresses **1, 5, 9**),
-   which match the program defaults. Set each fixture to **3-channel RGB DMX mode**.
-   Confirm the exact fixture manual says these channels are red, green, blue.
-   This program does not support the other fixture modes or their macros/strobe.
+   which match the program defaults. For the confirmed **Mega TRIPAR Profile Plus**,
+   select **Ch04 (four-channel RGB+UV)** on every fixture. Its channels are red,
+   green, blue and UV; the program leaves UV at zero. The earlier three-channel
+   instructions applied to RGB fixtures, not the Profile Plus.
    Addresses select independent fixtures; the cables carry the whole universe.
-   In this mode, RGB occupies channels 1–3, 5–7, and 9–11; the gaps are unused.
-   The `d.xxx` address display alone does not identify the channel mode. Four-channel
-   spacing also works with three-channel fixtures, but a fixture actually set to
-   four-channel mode needs a different channel mapping that is not yet supported.
+   RGB occupies channels 1–3, 5–7, and 9–11; UV channels 4, 8 and 12 stay off.
+   The `d.xxx` address display alone does not identify the channel mode. Ch05,
+   Ch06, Ch09 and Ch10 are not supported: their extra dimmer/shutter channels and
+   larger footprints do not match this setup. Other fixtures require a verified
+   channel layout. Three-channel RGB fixtures also work at these addresses.
+
+The Profile Plus layout is documented in [Open Fixture Library](https://github.com/OpenLightingProject/open-fixture-library/blob/master/fixtures/american-dj/mega-tripar-profile-plus.json)
+and [QLC+](https://github.com/mcallegari/qlcplus/blob/master/resources/fixtures/American_DJ/American-DJ-Mega-TriPar-Profile-Plus.qxf).
 
 ENTTEC's **Open DMX USB** is NOT supported by this driver. Confirm the adapter's
 label identifies a USB Pro-compatible model before using `--dmx-port`.
@@ -128,7 +153,7 @@ Once the adapter model and fixture modes are confirmed, enable output explicitly
 
 Start at low brightness and check each fixture's colors. `--addresses 1 5 9`
 explicitly selects your current addresses; these are also the defaults.
-Fixtures must still use RGB three-channel mode.
+Profile Plus fixtures must use Ch04, with UV off.
 Omit `--duration` to run until Ctrl-C. SIGINT/SIGTERM and capture errors attempt a
 blackout on exit. A power loss, unplugged USB cable, or killed process cannot
 send blackout; configure the fixtures' DMX-loss behavior appropriately.

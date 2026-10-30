@@ -2,7 +2,12 @@ import struct
 
 
 def universe(fixtures, addresses):
-    """RGB-only, three-channel mode. Addresses are one-based DMX start addresses."""
+    """Write RGB at one-based starts, leaving every other channel zero.
+
+    At starts 1/5/9 this also fits Profile Plus Ch04: each fourth (UV) channel
+    stays off. Callers must allow for the full fixture footprint when choosing
+    addresses; this helper only checks overlap between the RGB triplets.
+    """
     if len(fixtures) != len(addresses):
         raise ValueError("Each fixture needs an address")
     occupied = set()

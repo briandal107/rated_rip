@@ -18,6 +18,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from rated_rip.engine import Analyzer, Lighting
+from rated_rip import __version__
 from rated_rip.vocals import VocalState
 
 FPS = 30
@@ -51,6 +52,11 @@ def run_track(item, output, fingerprint):
     audio = np.frombuffer(raw, '<i2').reshape(-1, 2)
     analyzer = Analyzer()
     lighting, plain = Lighting(seed=7), Lighting(seed=7)
+    fixed = {name: Lighting(seed=7, scheme=name) for name in Lighting.SCHEMES}
+    fixed_frames, scheme_indices = [], []
+    previous_fixed = [[0] * 9 for _ in Lighting.SCHEMES]
+    previous_scheme = 0
+    scheme_sequence = [[0.0, lighting.scheme]]
     frames, attacks, changes, plain_changes, percussion = [], [], [], [], []
     previous = [0] * 23
     frame_index = 0
@@ -62,11 +68,18 @@ def run_track(item, output, fingerprint):
         # Show only a state available by this frame's audio time: no future samples.
         while frame_index / FPS < end_time:
             frames.append(previous)
+            fixed_frames.append(previous_fixed)
+            scheme_indices.append(previous_scheme)
             frame_index += 1
         samples = audio[start:start + analyzer.size].astype(float) / 32768
         features = analyzer.process(samples)
         rgb = lighting.update(features, analyzer.size / analyzer.rate)
         rgb_plain = plain.update(replace(features, vocal=VocalState()), analyzer.size / analyzer.rate)
+        previous_fixed = [[c for fixture in show.update(features, analyzer.size / analyzer.rate) for c in fixture]
+                          for show in fixed.values()]
+        previous_scheme = Lighting.SCHEMES.index(lighting.scheme)
+        if lighting.scheme != scheme_sequence[-1][1]:
+            scheme_sequence.append([end_time, lighting.scheme])
         for attack in features.attacks:
             percussion.append([attack.time, attack.reported_at, attack.stage,
                                attack.percussiveness, attack.rise_db, attack.noisiness,
@@ -82,7 +95,9 @@ def run_track(item, output, fingerprint):
         previous += [round(features.vocal.score * 100), int(features.vocal.active),
                      round(features.loudness * 100), round(features.density * 100), count]
     data = np.asarray(frames, dtype=np.int32)
-    np.savez_compressed(folder / 'trace.npz', frames=data)
+    fixed_data = np.asarray(fixed_frames, dtype=np.int32)
+    np.savez_compressed(folder / 'trace.npz', frames=data, schemes=fixed_data,
+                        scheme_indices=np.asarray(scheme_indices, dtype=np.int8))
     (folder / 'attacks.json').write_text(json.dumps(attacks, separators=(',', ':')))
     (folder / 'percussion.json').write_text(json.dumps(percussion, separators=(',', ':')))
     duration = len(audio) / analyzer.rate
@@ -104,8 +119,19 @@ def run_track(item, output, fingerprint):
     # Conditions here are mechanical invariants, not claims of musical accuracy.
     assert np.isfinite(data).all() and data[:, :18].min() >= 0 and data[:, :18].max() <= round(255 * 0.65)
     assert np.all(np.diff(data[:, 22]) >= 0)
+    assert fixed_data.min() >= 0 and fixed_data.max() <= round(255 * 0.65)
     assert len(frames) >= int((duration - 0.02) * FPS)
-    summary = dict(id=item['id'], title=item['title'], source_sha256=digest,
+    scheme_metrics = {}
+    for index, name in enumerate(Lighting.SCHEMES):
+        levels = fixed_data[:, index].reshape(-1, 3, 3).max(axis=2) / 255
+        scheme_metrics[name] = dict(mean_fixture_brightness=levels.mean(axis=0).tolist(),
+                                   mean_brightness_step=float(np.abs(np.diff(levels, axis=0)).mean()),
+                                   brightness_p10_p90=np.quantile(levels, [.1, .9], axis=0).tolist(),
+                                   mean_spatial_contrast=float(np.ptp(levels, axis=1).mean()),
+                                   maximum_dmx_channel=int(fixed_data[:, index].max()))
+    summary = dict(id=item['id'], title=item['title'], source_sha256=digest, version=__version__,
+                   scheme_sequence=scheme_sequence, scheme_changes=lighting.scheme_changes,
+                   fixed_schemes=scheme_metrics,
                    code_fingerprint=fingerprint, duration_seconds=duration,
                    trailing_samples_not_analyzed=len(audio) % analyzer.size,
                    processing_seconds=time.perf_counter() - started, frames=len(data),
@@ -152,7 +178,8 @@ def compare_reference(summary, output, reference_dir):
 
 def comparison_frames(summary, output, data):
     if 'reference' in summary:
-        return np.load(output / summary['id'] / 'reference.npz')['frames'], 'Previous version 0.3'
+        version = summary['reference'].get('version', '')
+        return np.load(output / summary['id'] / 'reference.npz')['frames'], f'Previous version {version}'.strip()
     return data[:, 9:18], 'Vocal layer disabled'
 
 
@@ -179,7 +206,7 @@ def plot_track(summary, output):
     axes[2].axhline(.7,color='gray',ls='--',lw=.6);axes[2].set_ylim(0,1)
     axes[2].legend(loc='upper right',fontsize=8)
     comparison, label = comparison_frames(summary, output, data)
-    for ax, rgb, label in [(axes[3],data[:, :9],'Version 0.4'),(axes[4],comparison,label)]:
+    for ax, rgb, label in [(axes[3],data[:, :9],f'Version {__version__}'),(axes[4],comparison,label)]:
         strips=rgb.reshape(-1,3,3).transpose(1,0,2)/255
         ax.imshow(strips,aspect='auto',extent=[0,times[-1],3,0],interpolation='nearest')
         ax.set_yticks([.5,1.5,2.5],['d.001','d.005','d.009']);ax.set_ylabel(label,fontsize=8)
@@ -212,7 +239,7 @@ def render_clip(item, summary, output):
             image=Image.new('RGB',(800,480),(10,15,25));draw=ImageDraw.Draw(image)
             draw.text((24,14),summary['title'][:77],font=font,fill=(225,232,245))
             draw.text((24,45),f'{int(time_point)//60}:{int(time_point)%60:02d}  |  VOCAL CUE {"ON" if values[19] else "OFF"}  {values[18]/100:.2f}  |  {values[22]} attacks',font=small,fill=(155,175,200))
-            for row,(rgb,label) in enumerate([(values[:9],'VERSION 0.4'),(comparison[index],comparison_label.upper())]):
+            for row,(rgb,label) in enumerate([(values[:9],f'VERSION {__version__}'),(comparison[index],comparison_label.upper())]):
                 top=85+row*175
                 draw.text((24,top),label,font=small,fill=(160,177,200))
                 for fixture,x in enumerate([140,400,660]):
@@ -235,13 +262,18 @@ def render_clip(item, summary, output):
 def dashboard(summaries, manifest, output):
     records=[]
     for summary,item in zip(summaries,manifest):
-        data=np.load(output/summary['id']/'trace.npz')['frames']
+        trace=np.load(output/summary['id']/'trace.npz')
+        data=trace['frames']
         comparison, label = comparison_frames(summary, output, data)
         records.append(dict(summary=summary,file=Path(item['file']).name,original=item['title']+'.mp3',
-                            frames=data.tolist(), comparison=comparison.tolist(), comparisonLabel=label))
+                            frames=data.tolist(), comparison=comparison.tolist(), comparisonLabel=label,
+                            hasClip=(output/summary['id']/'preview.mp4').exists(),
+                            schemeIndices=trace['scheme_indices'].tolist(),
+                            schemes={name: trace['schemes'][:, index].tolist()
+                                     for index, name in enumerate(Lighting.SCHEMES)}))
     encoded=json.dumps(records,separators=(',',':')).replace('<','\\u003c')
     template=(ROOT/'tools/show_dashboard.html').read_text()
-    (output/'index.html').write_text(template.replace('__TRACK_DATA__',encoded))
+    (output/'index.html').write_text(template.replace('__TRACK_DATA__',encoded).replace('__VERSION__',__version__))
 
 
 def main():
@@ -268,12 +300,12 @@ def main():
             compare_reference(summary, args.output_dir, args.reference_dir)
     (args.output_dir/'summary.json').write_text(json.dumps(summaries,indent=2)+'\n')
     for summary in summaries:plot_track(summary,args.output_dir)
-    dashboard(summaries,manifest,args.output_dir)
     if args.clips:
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             tasks=[pool.submit(render_clip,item,summary,args.output_dir) for item,summary in zip(manifest,summaries)]
             for index,task in enumerate(tasks,1):
                 task.result();print(f'Rendered preview {index}/{len(tasks)}',flush=True)
+    dashboard(summaries,manifest,args.output_dir)
     print('Report:',args.output_dir/'index.html',flush=True)
 
 
